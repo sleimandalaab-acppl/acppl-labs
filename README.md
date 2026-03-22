@@ -1,9 +1,28 @@
-# ACPPL
+# ACPPL – Causal Security Analysis Engine
 
-مشروعي لتحليل الهجمات الأمنية بطريقة ذكية.
+ACPPL هو محرك تحليل أمني سببي.
 
-الفكرة:
-بدلاً من معرفة أن هناك هجوم،
-نريد أن نعرف لماذا حدث.
+بدلاً من أن يخبرك "ماذا حدث"، يخبرك "لماذا حدث".
 
-المؤسس: سليمان الدلعب
+## 💡 الفكرة
+
+بدل:
+failed_logins → alert
+
+ACPPL يقول:
+weak_passwords + no_rate_limiting → brute_force → account_compromise
+
+---
+
+## 🚀 مثال استخدام
+
+```python
+from acppl import CausalEngine, Event
+
+engine = CausalEngine()
+
+engine.add_event(Event("failed_logins", "now"))
+
+results = engine.analyze()
+
+print(results)
