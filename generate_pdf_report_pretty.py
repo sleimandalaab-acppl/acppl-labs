@@ -1,10 +1,11 @@
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib import colors
-from reportlab.lib.units import cm
-from reportlab.lib.utils import ImageReader
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
 from datetime import datetime
 from acppl.ai_assistant import summarize_results
+
+styles = getSampleStyleSheet()
 
 # بيانات اختبار
 results = [
@@ -14,62 +15,75 @@ results = [
     {"risk": "data_leak", "cause": "api keys exposed online", "explanation": "Secrets found in repos"}
 ]
 
-# نص التقرير لكل خطر
-report_texts = [r.strip() for r in summarize_results(results).split("------------------------------")]
+doc = SimpleDocTemplate("ACPPL_AI_Report_Pro.pdf", pagesize=A4)
+elements = []
 
-# إنشاء PDF
-pdf_file = "ACPPL_AI_Report_Professional.pdf"
-c = canvas.Canvas(pdf_file, pagesize=A4)
-width, height = A4
+# --- غلاف ---
+elements.append(Paragraph("<b>ACPPL AI Risk Report</b>", styles['Title']))
+elements.append(Spacer(1, 20))
+elements.append(Paragraph(f"Date: {datetime.now().strftime('%Y-%m-%d')}", styles['Normal']))
+elements.append(Spacer(1, 40))
 
-# --- صفحة الغلاف ---
-c.setFont("Helvetica-Bold", 24)
-c.drawCentredString(width/2, height - 5*cm, "ACPPL AI Risk Report")
-c.setFont("Helvetica", 14)
-c.drawCentredString(width/2, height - 6*cm, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
-
-# إضافة شعار
+# محاولة إضافة الشعار
 try:
-    logo = ImageReader("acppl_logo.png")
-    c.drawImage(logo, width/2 - 4*cm, height - 9*cm, width=8*cm, height=4*cm, preserveAspectRatio=True)
+    elements.append(Image("acppl_logo.png", width=200, height=100))
 except:
-    print("Logo not found, skipping.")
+    pass
 
-c.showPage()  # صفحة جديدة للتقرير
+elements.append(Spacer(1, 50))
 
-# --- صفحة التقرير ---
-y = height - 3*cm
-
-# لون لكل نوع خطر
-risk_colors = {
-    "brute_force": colors.red,
-    "weak_passwords": colors.orange,
-    "unusual_ip": colors.blue,
-    "data_leak": colors.green
-}
+# --- التقرير ---
+report_texts = [r.strip() for r in summarize_results(results).split("------------------------------")]
 
 for report in report_texts:
     lines = report.split("\n")
-    if not lines or len(lines) < 2:
+    if len(lines) < 2:
         continue
-    risk_line = lines[0].replace("Risk: ", "").lower()
-    color = risk_colors.get(risk_line, colors.black)
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(color)
-    c.drawString(2*cm, y, lines[0])
-    y -= 1*cm
 
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.black)
-    for line in lines[1:]:
-        if line.strip() == "":
+    risk = lines[0].replace("Risk: ", "")
+    cause = ""
+    explanation = ""
+    recommendations = []
+
+    section = ""
+    for line in lines:
+        if "Why it happened" in line:
+            section = "cause"
+        elif "Explanation" in line:
+            section = "explanation"
+        elif "Recommended actions" in line:
+            section = "rec"
+        elif line.strip() == "":
             continue
-        if y < 3*cm:
-            c.showPage()
-            y = height - 3*cm
-        c.drawString(2*cm, y, line)
-        y -= 0.7*cm
-    y -= 0.5*cm  # مسافة بين المخاطر
+        else:
+            if section == "cause":
+                cause += line + " "
+            elif section == "explanation":
+                explanation += line + " "
+            elif section == "rec":
+                recommendations.append(line)
 
-c.save()
-print(f"Professional PDF generated: {pdf_file}")
+    # جدول لكل خطر
+    data = [
+        ["Risk", risk],
+        ["Cause", cause],
+        ["Explanation", explanation],
+        ["Recommendations", "\n".join(recommendations)]
+    ]
+
+    table = Table(data, colWidths=[120, 330])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("BOX", (0, 0), (-1, -1), 1, colors.black),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 25))
+
+# بناء الملف
+doc.build(elements)
+
+print("Professional Report Created: ACPPL_AI_Report_Pro.pdf")
