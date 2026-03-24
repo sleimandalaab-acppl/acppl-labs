@@ -2,6 +2,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
+from datetime import datetime
 from acppl.ai_assistant import summarize_results
 
 # بيانات اختبار
@@ -16,14 +18,27 @@ results = [
 report_texts = [r.strip() for r in summarize_results(results).split("------------------------------")]
 
 # إنشاء PDF
-pdf_file = "ACPPL_AI_Report_Pretty.pdf"
+pdf_file = "ACPPL_AI_Report_Professional.pdf"
 c = canvas.Canvas(pdf_file, pagesize=A4)
 width, height = A4
 
+# --- صفحة الغلاف ---
+c.setFont("Helvetica-Bold", 24)
+c.drawCentredString(width/2, height - 5*cm, "ACPPL AI Risk Report")
+c.setFont("Helvetica", 14)
+c.drawCentredString(width/2, height - 6*cm, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
+
+# إضافة شعار
+try:
+    logo = ImageReader("acppl_logo.png")
+    c.drawImage(logo, width/2 - 4*cm, height - 9*cm, width=8*cm, height=4*cm, preserveAspectRatio=True)
+except:
+    print("Logo not found, skipping.")
+
+c.showPage()  # صفحة جديدة للتقرير
+
+# --- صفحة التقرير ---
 y = height - 3*cm
-c.setFont("Helvetica-Bold", 16)
-c.drawString(5*cm, y, "ACPPL AI Risk Report")
-y -= 2*cm
 
 # لون لكل نوع خطر
 risk_colors = {
@@ -57,4 +72,4 @@ for report in report_texts:
     y -= 0.5*cm  # مسافة بين المخاطر
 
 c.save()
-print(f"Pretty PDF generated: {pdf_file}")
+print(f"Professional PDF generated: {pdf_file}")
